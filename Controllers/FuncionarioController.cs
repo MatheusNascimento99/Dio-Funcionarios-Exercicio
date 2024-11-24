@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using CadastroFuncionarios.Context;
 using CadastroFuncionarios.Entities;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace CadastroFuncionarios.Controllers
@@ -19,35 +20,51 @@ namespace CadastroFuncionarios.Controllers
             _context = context;
         }
 
+        #region FuncionarioCreate
         [HttpPost]
-        public IActionResult FuncionarioCreate(Funcionario funcionario)
+        public async Task<IActionResult> FuncionarioCreate(Funcionario funcionario)
         {
             _context.Add(funcionario);
-            _context.SaveChanges();
+            _context.SaveChangesAsync();
+            await TableStorageLogger.LogAsync(funcionario, Enum.TipoAcao.Inclusao);
             return Ok(funcionario);
         }
+        #endregion
 
+        #region FuncionarioGetAll
         [HttpGet]
-        public IActionResult FuncionarioGetAll()
+        public async Task<IActionResult> FuncionarioGetAll()
         {
-            var funcionarios = _context.Funcionarios.ToList();
+            var funcionarios = await _context.Funcionarios.ToListAsync();
+
+            foreach (var funcionario in funcionarios)
+            {
+                await TableStorageLogger.LogAsync(funcionario, Enum.TipoAcao.Busca);
+
+            }
+
             return Ok(funcionarios);
         }
+        #endregion
 
-
+        #region  FuncionarioGetId
         [HttpGet("{id}")]
-        public IActionResult FuncionarioGetId(int id)
+        public async Task<IActionResult> FuncionarioGetId(int id)
         {
             var DbFuncionario = _context.Funcionarios.Find(id);
             if (DbFuncionario == null)
             {
                 return NotFound("Funcionário não encontrado!");
             }
+            await TableStorageLogger.LogAsync(DbFuncionario, Enum.TipoAcao.Busca);
+
             return Ok(DbFuncionario);
         }
+        #endregion
 
+        #region FuncionarioUpdate
         [HttpPut("{id}")]
-        public IActionResult FuncionarioUpdate(int id, Funcionario funcionario)
+        public async Task<IActionResult> FuncionarioUpdate(int id, Funcionario funcionario)
         {
             var Dbfuncionario = _context.Funcionarios.Find(id);
 
@@ -60,19 +77,18 @@ namespace CadastroFuncionarios.Controllers
             Dbfuncionario.Departamento = funcionario.Departamento;
             Dbfuncionario.Salario = funcionario.Salario;
             Dbfuncionario.DataAdmissao = funcionario.DataAdmissao;
-            
+
+
+
             _context.SaveChanges();
+            await TableStorageLogger.LogAsync(funcionario, Enum.TipoAcao.Atualizacao);
             return Ok(Dbfuncionario);
         }
+        #endregion
 
-
-
-
-
-
-
+        #region FuncionarioDeleteId
         [HttpDelete("{id}")]
-        public IActionResult FuncionarioDeleteId(int id)
+        public async Task<IActionResult> FuncionarioDeleteId(int id)
         {
             var DbFuncionario = _context.Funcionarios.Find(id);
             if (DbFuncionario == null)
@@ -80,10 +96,17 @@ namespace CadastroFuncionarios.Controllers
                 return NotFound("Funcionário não encontrado!");
             }
             _context.Funcionarios.Remove(DbFuncionario);
-            _context.SaveChanges();
+            _context.SaveChangesAsync();
+            try
+            {
+                await TableStorageLogger.LogAsync(DbFuncionario, Enum.TipoAcao.Remocao);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao registrar log no Azure: {ex.Message}");
+            }
             return Ok("Funcionário apagado com sucesso");
         }
-
-
+        #endregion
     }
 }

@@ -4,6 +4,7 @@ namespace CadastroFuncionarios.Enum
     {
         Inclusao,
         Atualizacao,
-        Remocao
+        Remocao,
+        Busca
     }
 }
